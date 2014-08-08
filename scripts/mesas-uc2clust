@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+
+import multiprocessing
+from itertools import izip_longest
+import argparse
+
+def uc2clust(uc_file, out_file, numcores):
+	""" Process a fasta file into a tab-separated file. """
+	otu_map = {}
+	#Number of lines to read at once
+	chunksize = 10000
+	p = multiprocessing.Pool(numcores)
+	out_file = open(out_file,"w")
+	with open(uc_file,"r") as uc:
+		for chunk in grouper(chunksize, uc):
+			results = p.map(process_record, chunk)
+			for item in results:
+				try:
+					if item:
+					#Write the results to file
+						if item[0] in otu_map:
+							otu_map[item[0]].append(item[1])
+						else:
+							otu_map[item[0]] = [item[1]]
+				except:
+					print item
+		#Clean up the threads
+		p.close()
+		p.join()
+	for otu_id, seq_ids in otu_map.iteritems():
+		out_file.write("%s\t%s\n" % (otu_id.strip(), "\t".join(seq_ids)))
+	out_file.close()
+	
+#Process that Multiprocessing
+#Replace this with any workhorse function you want
+
+def process_record(record):
+	if record:
+		if record[0] is "H":
+			rec_split = record.split("\t")
+			return (rec_split[9], rec_split[8])
+	else:
+		return None
+
+#From the itertools standard recipes
+def grouper(n, iterable, fillvalue=None):
+	"""grouper(3, 'abcdefg', 'x') -->
+	('a','b','c'), ('d','e','f'), ('g','x','x')"""
+	return izip_longest(*[iter(iterable)]*n, fillvalue=fillvalue)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Converts a map.uc file from USEARCH to the QIIME-compatible seq_otus.txt')
+    parser.add_argument("input", type=str, help="Input .uc file")
+    parser.add_argument("output", type=str, help="Output file name")
+    parser.add_argument("-t", "--threads", type=int, help="Number of threads to use (default 1)", default=1)
+    args = parser.parse_args()
+    uc2clust(args.input, args.output, args.threads)
