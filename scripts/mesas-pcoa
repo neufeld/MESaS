@@ -81,7 +81,7 @@ otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
 otutable <- otutable[order(as.integer(sub("X","", rownames(otutable)))),]
 
 print("Reading mapping");
-mapping <- read.table(mappingFile, header = TRUE, comment.char = "", row.names = "X.SampleID", sep = "\t", colClasses = "character")
+mapping <- read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t", colClasses = "character")
 
 print("Computing PCoA");
 
