@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+import argparse
+
+parser = argparse.ArgumentParser(prog='mesas-indicator-otu')
+parser.add_argument("-i", metavar="input", help="Input indicator species file", required=True, type=str)
+parser.add_argument("-t", metavar="table", help="OTU table file (tab format)", required=True, type=str)
+parser.add_argument("-o", metavar="output", help="Output directory", required=True, type=str)
+args = parser.parse_args()
+
+ind_file = args.i
+otu_file = args.t
+out_dir = args.o
+
+#Store the OTU table into a dict
+otu_dict = {}
+with open(otu_file, 'r') as otu_table:
+    for line in otu_table:
+        split_line = line.split("\t")
+        otu_dict[split_line[0]] = split_line[1:]
+
+with open(ind_file, 'r') as ind_list:
+    with open(out_dir+"/indicator_species_summary.tab",'w') as out_ind:
+        while True:
+            line = ind_list.readline()
+            #Look for the hook
+            if "[1] \"For" in line:
+                #Get the metadata category
+                metadata = line.split("For ")[-1][:-2]
+                #Skip the header line
+                ind_list.readline()
+                out_ind.write("#" + metadata + "\n")
+                out_ind.write("otu_id\tcluster\tindicator_value\tp_value\t" + "\t".join(otu_dict["#OTU ID"]).strip() + "\n")
+                line = ind_list.readline()
+                while line != "\n":
+                    split_line = line.split(" ")
+                    line_data = [x for x in split_line if x != "" ]
+                    otu_line = otu_dict[line_data[0]]
+                    out_ind.write("\t".join(line_data).strip() + "\t".join(otu_line).strip()+"\n")
+                    line = ind_list.readline()
+                out_ind.write("\n")
+            if not line:
+                break
