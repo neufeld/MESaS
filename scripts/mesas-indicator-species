@@ -71,11 +71,15 @@ otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
 
 #Read in mapping
 print("Reading mapping");
-mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = "X.SampleID", sep = "\t"))
-
+mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t"))
 # For non-numeric sample names, comment out the following line
-colnames(mapping) <- paste("X", colnames(mapping), sep = "");
-
+#colnames(mapping) <- paste("X", colnames(mapping), sep = "");
+numeric_names <- suppressWarnings(sapply(colnames(mapping),as.numeric))
+numeric <- sum(sapply(numeric_names,is.na)) == 0
+if (numeric) {
+	colnames(mapping) <- paste("X", colnames(mapping), sep = "")
+}
+colnames(mapping) <- gsub("-",".",colnames(mapping),fixed=TRUE)
 #Send to file duleg_p.txt where p is the supplied p value with the decimal point removed
 pstr <- sub(".","",as.character(plimit),fixed=TRUE)
 sink(paste(outDir, "/ind_species_raw.txt", sep=""), append = FALSE)
