@@ -1,0 +1,115 @@
+#!/usr/bin/env python
+
+import argparse
+import multiprocessing
+from itertools import izip_longest
+from collections import Counter
+from zlib import compress, decompress
+#from lib.smaz import compress, decompress
+
+nucleotide_map = {"A":"0","T":"1","G":"2","C":"3","N":"4"}
+num_map = {0:"A",1:"T",2:"G",3:"C",4:"N"}
+from string import maketrans
+nucleotides = "ATGCN"
+numbers = "01234"
+nuc2num = maketrans(nucleotides, numbers)
+num2nuc = maketrans(numbers, nucleotides)
+
+def int2base(x, base):
+  if x < 0: sign = -1
+  elif x==0: return '0'
+  else: sign = 1
+  x *= sign
+  digits = []
+  while x:
+    digits.append(numbers[x % base])
+    x /= base
+  if sign < 0:
+    digits.append('-')
+  digits.reverse()
+  return ''.join(digits)
+
+def seq2num(sequence):
+	"""Converts nucleotide string to a base-4 representation. Only accepts
+	A,T,G,C,N. No other ambiguous nucleotides.
+	"""
+	#seq_length = len(sequence)
+	#base4_str = ""
+	#i = 1
+	#for nucleotide in sequence.strip():
+		#base4_str += nucleotide_map[nucleotide]
+		#i += 1
+	return int(sequence.translate(nuc2num),5)
+	
+def num2seq(num, seq_length):
+	"""Converts [length, base-4 repr] list to a nucleotide string."""
+	#seq_length = seq_info[0]
+	#seq_num = seq_info[1]
+	#seq = ""
+	#for i in range(1,seq_length+1):
+		#seq += num_map[seq_num/4**(seq_length-i)]
+		#seq_num -= (seq_num/4**(seq_length-i))*4**(seq_length-i)
+	base5_str = int2base(num, 5)
+	if len(base5_str) is not seq_length:
+		diff = seq_length - len(base5_str)
+		base5_str = '0'*diff + base5_str
+	
+	return base5_str.translate(num2nuc)
+
+def derep(in_file, out_file):
+	""" Process a fasta file into a tab-separated file. """
+	#Number of lines to read at once
+	chunksize = 100000
+	#p = multiprocessing.Pool(numcores)
+	out_file = open(out_file,"w")
+	with open(in_file,"r") as f:
+		clist = dict()
+		i=0
+		for chunk in grouper(chunksize, f):
+			for record in grouper(2, chunk):
+			#Use the following line if you need to read two records at a time (ie, fasta files)
+			#results = p.map(process_record, grouper(2,chunk))
+			#Otherwise, one line at a time
+			#results = p.map(process_record, chunk)
+			#for item in results:
+					#Write the results to file
+				seq = record[1]
+				if seq:
+					seq = seq.strip()
+					seq_len = len(seq)
+					if seq_len not in clist:
+						clist[seq_len] = Counter()
+					#clist[seq_len][seq2num(seq, seq_len)]+=1
+					clist[seq_len][seq2num(seq)]+=1
+					i+=1
+					#if i%10000==0:
+					#	print i
+		#Clean up the threads
+		#p.close()
+		#p.join()
+	print("Dereplication complete... writing FASTA file")
+	for length, counter in clist.iteritems():
+		for seq, count in dict(counter).iteritems():
+			if (count>1) & (seq is not "") & (seq is not None):
+					out_file.write(">size=%s;\n%s\n" % (str(count), num2seq(seq, length)))
+	out_file.close()
+	print("Writing file complete")
+	
+#Process that Multiprocessing
+#Replace this with any workhorse function you want
+
+def process_record(record):
+	return record[1]
+
+#From the itertools standard recipes
+def grouper(n, iterable, fillvalue=None):
+	"""grouper(3, 'abcdefg', 'x') -->
+	('a','b','c'), ('d','e','f'), ('g','x','x')"""
+	return izip_longest(*[iter(iterable)]*n, fillvalue=fillvalue)
+
+if __name__=="__main__":
+    parser = argparse.ArgumentParser(prog='mesas-dereplication')
+    parser.add_argument("-i", metavar="input", help="Input sequence FASTA file", type=str)
+    parser.add_argument("-o", metavar="output", help="Output dereplicated FASTA file", type=str)
+    args = parser.parse_args()
+    derep(args.i, args.o)
