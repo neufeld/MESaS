@@ -78,11 +78,12 @@ rawtable <- read.table(otuTable, skip = 1,
 comment.char = "", header = TRUE, row.names = 1, sep = "\t")
 otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
 #Sort numerically the samples
-otutable <- otutable[order(as.integer(sub("X","", rownames(otutable)))),]
+#otutable <- otutable[order(as.integer(sub("X","", rownames(otutable)))),]
 
 print("Reading mapping");
 mapping <- read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t", colClasses = "character")
-
+rownames(mapping) <- gsub("-",".",rownames(mapping),fixed=TRUE)
+setdiff(rownames(mapping), rownames(otutable))
 print("Computing PCoA");
 
 d <- vegdist(otutable, method=dmethod);
@@ -93,7 +94,7 @@ print("Making PCoA Plot");
 p <- pcoa(d);
 for (x in 1 : ncol(mapping)) {
   name <- colnames(mapping)[x]
-	metadata <- factor(as.matrix(mapping[,x]))
+	metadata <- factor(mapping[rownames(otutable),x])
   fac.len <- length(levels(metadata))
   if (fac.len < 2 || fac.len >= nrow(mapping)) {
     print(paste("Ignoring", name, "because all values are identical/different."))
@@ -115,8 +116,8 @@ print("Making biplot");
 numeric_mapping <- suppressWarnings(apply(mapping,2,as.numeric))
 numeric <- colSums(apply(numeric_mapping,2,is.na)) == 0
 numeric_mapping <- numeric_mapping[,numeric]
-#Use the ape biplot figure to plot log transformed environmental variables
-biplot(p, apply(log1p(numeric_mapping), 2, scale, center=TRUE, scale=TRUE))
+rownames(numeric_mapping) <- rownames(mapping)
+biplot(p, apply(numeric_mapping, 2, scale, center=TRUE, scale=TRUE))
 
 sink(paste(outDir, "/pcoa-",dmethod,".txt",sep=""))
 print("Eigenvalues:")
