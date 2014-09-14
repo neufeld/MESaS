@@ -29,8 +29,8 @@ with open(ind_file, 'r') as ind_list:
             if "[1] \"For" in line:
                 #Get the metadata category
                 metadata = line.split("For ")[-1][:-2]
-                out_report.write("<li><a href=\"%s.tab\">%s</a></li>\n" % (metadata, metadata))
-                with open(out_dir+"/"+metadata+".tab", 'w') as out_ind:
+                out_report.write("<li><a href=\"%s.tsv\">%s</a></li>\n" % (metadata, metadata))
+                with open(out_dir+"/"+metadata+".tsv", 'w') as out_ind:
                     #Add this indicator species item into the HTML report
                     #Skip the header line
                     ind_list.readline()
