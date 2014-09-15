@@ -18,7 +18,7 @@ pkgTest('getopt')
 #-m mapping file
 #-e mapping.extra file
 #-t headers.txt file
-#-o output dir
+#-o output filename
 #-d distance method
 #-p plot ellipsoids
 spec = matrix(c('input', 'i', 1, "character",
@@ -48,10 +48,10 @@ if ( is.null(opt$mapping) ) {
   q(status=1)
 }
 if ( is.null(opt$output) ) {
-  opt$output <- getwd()
+  opt$output <- paste("pcoa-",opt$distance,".pdf",sep="")
 }
 
-outDir <- opt$output
+outName <- opt$output
 otuTable <- opt$input
 mappingFile <- opt$mapping
 dmethod <- opt$distance
@@ -63,8 +63,6 @@ if (! dmethod %in% dlist ) {
 	print(paste("Invalid distance method:", dmethod))
 	q(status=1)
 } 
-
-dir.create(outDir)
 
 pkgTest("vegan")
 pkgTest("ape")
@@ -86,7 +84,7 @@ mapping <- read.table(mappingFile, header = TRUE, comment.char = "", row.names =
 print("Computing PCoA");
 
 d <- vegdist(otutable, method=dmethod);
-pdf(paste(outDir, "/pcoa-",dmethod,".pdf",sep=""),useDingbats=F);
+pdf(outName,useDingbats=F);
 
 print("Making PCoA Plot");
 
@@ -118,7 +116,7 @@ numeric_mapping <- numeric_mapping[,numeric]
 #Use the ape biplot figure to plot log transformed environmental variables
 biplot(p, apply(log1p(numeric_mapping), 2, scale, center=TRUE, scale=TRUE))
 
-sink(paste(outDir, "/pcoa-",dmethod,".txt",sep=""))
+sink(paste(dirname(outName),"/eigenvalues.txt",sep=""))
 print("Eigenvalues:")
 print(as.matrix(p$values$Eigenvalues))
 print("Relative Eigenvalues:")
