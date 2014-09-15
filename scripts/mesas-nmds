@@ -1,0 +1,126 @@
+#!/usr/bin/env Rscript
+options(error = quote(dump.frames("mrpp-debug", TRUE)))
+
+#source("@prefix@/share/@PACKAGE@/biom.R")
+
+pkgTest <- function(x)
+{
+        if (!require(x,character.only = TRUE))
+        {
+                install.packages(x,dep=TRUE)
+                if(!require(x,character.only = TRUE)) stop("Package not found")
+        }
+}
+
+pkgTest('getopt')
+
+#Grab arguments
+#Arguments required:
+#-i input OTU table (tabular format ONLY, JSON libraries much too slow in R)
+#-m mapping file
+#-o output dir
+#-d distance method
+spec = matrix(c('input', 'i', 1, "character",'mapping', 'm', 1, "character",'output' , 'o', 1, "character", 'distance' ,'d', 2, "character",'help', 'h', 2, "character"), byrow=TRUE, ncol=4)
+
+opt = getopt(spec)
+
+# if help was asked for print a friendly message
+# and exit with a non-zero error code
+if ( !is.null(opt$help) ) {
+  cat(getopt(spec, usage=TRUE))
+  q(status=1)
+}
+
+if ( is.null(opt$input) ) {
+  print("Input OTU table required.")
+  q(status=1)
+}
+if ( is.null(opt$mapping) ) {
+  print("Mapping file required.")
+  q(status=1)
+}
+if ( is.null(opt$output) ) {
+  print("Output directory required.")
+  q(status=1)
+}
+
+distancemethod = opt$distance
+
+if ( is.null(distancemethod) ) {
+	distancemethod = "bray"
+}
+
+outDir = opt$output
+otuTable = opt$input
+mappingFile = opt$mapping
+
+dir.create(outDir)
+
+pkgTest("vegan")
+
+#Read in and format otu table
+print("Reading OTU table")
+rawtable <- read.table(otuTable, skip = 1,
+comment.char = "", header = TRUE, row.names = 1, sep = "\t")
+otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
+
+print("Reading mapping");
+mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = "X.SampleID", sep = "\t"))
+
+# For non-numeric sample names, comment out the following line
+colnames(mapping) <- paste("X", colnames(mapping), sep = "");
+
+pdf(paste(outDir, "/nmds-", distancemethod, ".pdf", sep=""),useDingbats=FALSE)
+def.par <- par(no.readonly = TRUE)
+sink(paste(outDir, "/nmds-", distancemethod, ".txt", sep=""), append = FALSE)
+sink()
+otutable.ord <- metaMDS(otutable, distance = distancemethod)
+for (x in 1 : nrow(mapping)) {
+	name <- rownames(mapping)[x]
+	fac.len <- length(levels(factor(as.matrix(mapping[x,])))) 
+	if (fac.len < 2 || fac.len >= ncol(mapping)) {
+		print(paste("Ignoring", name, "because all values are identical/different."))
+		next
+	}
+
+#	print(paste("Computing MRPP for", name))
+	m <- mapping[x, rownames(otutable)]
+#	otutable.mrpp <- mrpp(otutable, m, distance = distancemethod)
+#	sink(paste(outDir, "/mrpp-", distancemethod, ".txt", sep=""), append = TRUE)
+#	print(paste("MRPP for", name, ", method:", distancemethod))
+#	print(otutable.mrpp)
+#	print(paste("T statistic : ", (otutable.mrpp$delta - otutable.mrpp$E.delta) / sd(otutable.mrpp$boot.deltas)))
+#	sink()
+	metadata_colours<-factor(m)
+	levels(metadata_colours)<-rainbow(fac.len)
+	metadata_colours<-unlist(lapply(metadata_colours,function(x) { substr(x, 0, 7); }));
+	plot(otutable.ord, display = "sites", type="n", main = paste("MDS for", name, "Method:", distancemethod))
+	points(otutable.ord, col=metadata_colours, bg=metadata_colours, pch=21)
+	ordiellipse(otutable.ord, m,conf=0.95)
+	legend("bottomleft", legend = unique(m), pch = 21, col = unique(metadata_colours), pt.bg=unique(metadata_colours));
+	#with(otutable.mrpp, {
+	#	print("Producing histogram")
+	#	fig.dist <- hist(boot.deltas, xlim = range(c(delta,boot.deltas)), main = paste("Test of Differences Among", name, "Groups"))
+	#	abline(v = delta); 
+	#	text(delta, 2*mean(fig.dist$counts), adj = -0.5, expression(bold(delta)), cex=1.5 )
+	#})
+	par(def.par)
+	sink(paste(outDir, "/nmds-", distancemethod, ".txt", sep=""), append = TRUE)
+	print(paste("Stress value for NMDS plot:", otutable.ord$stress))
+	sink()
+#	print("Computing mean distances")
+#	otutable.bc <- vegdist(otutable)
+#	tryCatch(plot(meandist(otutable.bc, m), main = paste("Mean distances for", name)), error = function() next)
+}
+
+#First, we take the mapping file and we coerce the columns to numeric
+numeric_mapping <- suppressWarnings(apply(t(mapping),2,as.numeric))
+numeric <- colSums(apply(numeric_mapping,2,is.na)) == 0
+numeric_mapping <- numeric_mapping[,numeric]
+if ( length(numeric_mapping) > 1 ) {
+  print("Making biplot");
+  fit<-envfit(otutable, numeric_mapping)
+	plot(otutable.ord, display = "sites", main="Biplot, red: p<=0.05")
+	plot(fit)
+	plot(fit, p.max=0.05, col="red")
+}
