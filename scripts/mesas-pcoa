@@ -82,8 +82,15 @@ otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
 
 print("Reading mapping");
 mapping <- read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t", colClasses = "character")
+# For non-numeric sample names, comment out the following line
+#colnames(mapping) <- paste("X", colnames(mapping), sep = "");
+numeric_names <- suppressWarnings(sapply(rownames(mapping),as.numeric))
+numeric <- sum(sapply(numeric_names,is.na)) == 0
+if (numeric) {
+  rownames(mapping) <- paste("X", rownames(mapping), sep = "")
+}
 rownames(mapping) <- gsub("-",".",rownames(mapping),fixed=TRUE)
-setdiff(rownames(mapping), rownames(otutable))
+
 print("Computing PCoA");
 
 d <- vegdist(otutable, method=dmethod);
