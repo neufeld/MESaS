@@ -93,7 +93,6 @@ print("Computing PCoA");
 
 d <- vegdist(otutable, method=dmethod);
 pdf(outName,useDingbats=F);
-
 print("Making PCoA Plot");
 
 p <- pcoa(d);
