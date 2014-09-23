@@ -100,8 +100,8 @@ for (x in 1 : ncol(mapping)) {
   name <- colnames(mapping)[x]
 	metadata <- factor(mapping[rownames(otutable),x])
   fac.len <- length(levels(metadata))
-  if (fac.len < 2 || fac.len >= nrow(mapping)) {
-    print(paste("Ignoring", name, "because all values are identical/different."))
+  if (fac.len < 2 ) {
+    print(paste("Ignoring", name, "because all values are identical."))
     next
   }
 	metadata_colours <- metadata
