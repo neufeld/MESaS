@@ -81,8 +81,8 @@ otutable.ord <- metaMDS(otutable, distance = distancemethod)
 for (x in 1 : nrow(mapping)) {
 	name <- rownames(mapping)[x]
 	fac.len <- length(levels(factor(as.matrix(mapping[x,])))) 
-	if (fac.len < 2 || fac.len >= ncol(mapping)) {
-		print(paste("Ignoring", name, "because all values are identical/different."))
+	if (fac.len < 2 ) {
+		print(paste("Ignoring", name, "because all values are identical."))
 		next
 	}
 
@@ -123,8 +123,8 @@ numeric_mapping <- numeric_mapping[,numeric]
 colnames(numeric_mapping) <- rownames(mapping[numeric,])
 rownames(numeric_mapping) <- colnames(mapping)
 if ( length(numeric_mapping) > 1 ) {
-  print("Making biplot");
-  fit<-envfit(otutable, numeric_mapping)
+  print("Making biplot")
+  fit<-envfit(otutable.ord, numeric_mapping)
 	plot(otutable.ord, display = "sites", main="Biplot, red: p<=0.05")
 	plot(fit)
 	plot(fit, p.max=0.05, col="red")
