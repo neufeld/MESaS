@@ -30,86 +30,124 @@ def int2base(x, base):
   return ''.join(digits)
 
 def seq2num(sequence):
-	"""Converts nucleotide string to a base-4 representation. Only accepts
-	A,T,G,C,N. No other ambiguous nucleotides.
-	"""
-	#seq_length = len(sequence)
-	#base4_str = ""
-	#i = 1
-	#for nucleotide in sequence.strip():
-		#base4_str += nucleotide_map[nucleotide]
-		#i += 1
-	return int(sequence.translate(nuc2num),5)
-	
+    """Converts nucleotide string to a base-4 representation. Only accepts
+    A,T,G,C,N. No other ambiguous nucleotides.
+    """
+    #seq_length = len(sequence)
+    #base4_str = ""
+    #i = 1
+    #for nucleotide in sequence.strip():
+        #base4_str += nucleotide_map[nucleotide]
+        #i += 1
+    return int(sequence.translate(nuc2num),5)
+    
 def num2seq(num, seq_length):
-	"""Converts [length, base-4 repr] list to a nucleotide string."""
-	#seq_length = seq_info[0]
-	#seq_num = seq_info[1]
-	#seq = ""
-	#for i in range(1,seq_length+1):
-		#seq += num_map[seq_num/4**(seq_length-i)]
-		#seq_num -= (seq_num/4**(seq_length-i))*4**(seq_length-i)
-	base5_str = int2base(num, 5)
-	if len(base5_str) is not seq_length:
-		diff = seq_length - len(base5_str)
-		base5_str = '0'*diff + base5_str
-	
-	return base5_str.translate(num2nuc)
+    """Converts [length, base-4 repr] list to a nucleotide string."""
+    #seq_length = seq_info[0]
+    #seq_num = seq_info[1]
+    #seq = ""
+    #for i in range(1,seq_length+1):
+        #seq += num_map[seq_num/4**(seq_length-i)]
+        #seq_num -= (seq_num/4**(seq_length-i))*4**(seq_length-i)
+    base5_str = int2base(num, 5)
+    if len(base5_str) is not seq_length:
+        diff = seq_length - len(base5_str)
+        base5_str = '0'*diff + base5_str
+    
+    return base5_str.translate(num2nuc)
 
-def derep(in_file, out_file):
-	""" Process a fasta file into a tab-separated file. """
-	#Number of lines to read at once
-	chunksize = 100000
-	#p = multiprocessing.Pool(numcores)
-	out_file = open(out_file,"w")
-	with open(in_file,"r") as f:
-		clist = dict()
-		i=0
-		for chunk in grouper(chunksize, f):
-			for record in grouper(2, chunk):
-			#Use the following line if you need to read two records at a time (ie, fasta files)
-			#results = p.map(process_record, grouper(2,chunk))
-			#Otherwise, one line at a time
-			#results = p.map(process_record, chunk)
-			#for item in results:
-					#Write the results to file
-				seq = record[1]
-				if seq:
-					seq = seq.strip()
-					seq_len = len(seq)
-					if seq_len not in clist:
-						clist[seq_len] = Counter()
-					#clist[seq_len][seq2num(seq, seq_len)]+=1
-					clist[seq_len][seq2num(seq)]+=1
-					i+=1
-					#if i%10000==0:
-					#	print i
-		#Clean up the threads
-		#p.close()
-		#p.join()
-	print("Dereplication complete... writing FASTA file")
-	for length, counter in clist.iteritems():
-		for seq, count in dict(counter).iteritems():
-			if (count>1) & (seq is not "") & (seq is not None):
-					out_file.write(">size=%s;\n%s\n" % (str(count), num2seq(seq, length)))
-	out_file.close()
-	print("Writing file complete")
-	
+def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N):
+    """ Process a fasta file into a tab-separated file. """
+    #Number of lines to read at once
+    chunksize = 100000
+    #p = multiprocessing.Pool(numcores)
+    out_file = open(out_file,"w")
+    if otu_table_path:
+        otu_table = open(otu_table_path,"w")
+    with open(in_file,"r") as f:
+        clist = dict()
+        abundlist = dict()
+        sample_names = []
+        sequence = ""
+        sample_id = None
+        for line in f:
+            if line.startswith(">"):
+                #Process the last sequence
+                if exclude_N:
+                    if "N" not in sequence:
+                        process = True
+                    else:
+                        process = False
+                else:
+                    process = True
+                if (sequence is not "") and process:
+                    seq_len = len(sequence)
+                    if seq_len not in clist:
+                        clist[seq_len] = Counter()
+                        if otu_table_path:
+                            abundlist[seq_len] = dict()
+                    seqnum = seq2num(sequence)
+                    clist[seq_len][seqnum]+=1
+                    if otu_table_path:
+                        if seqnum not in abundlist[seq_len]:
+                            abundlist[seq_len][seqnum] = dict()
+                        if sample_id not in abundlist[seq_len][seqnum]:
+                            abundlist[seq_len][seqnum][sample_id] = 0
+                        abundlist[seq_len][seqnum][sample_id] += 1
+                #Start processing the next sequences
+                if otu_table_path:
+                    #Parse out the sample ID
+                    sample_id = line.split("_")[0][1:]
+                    if sample_id not in sample_names:
+                        sample_names.append(sample_id)
+                sequence = ""
+            else:
+                sequence += line.strip()
+    print("Dereplication complete... writing FASTA file")
+    i=0
+    #Write the OTU table headers
+    if otu_table_path:
+        otu_table.write("#OTU ID")
+        for sample_id in sample_names:
+            otu_table.write("\t%s" % sample_id)
+        otu_table.write("\n")
+    for length, counter in iter(sorted(clist.items(),key=lambda x: x[0],reverse=True)):
+        for seq, count in iter(sorted(dict(counter).items(),key=lambda x: x[1],reverse=True)):
+            if (count>=n) & (seq is not "") & (seq is not None):
+                    out_file.write(">%s size=%s;\n%s\n" % (str(i), str(count), num2seq(seq, length)))
+                    if otu_table_path:
+                        otu_table.write(str(i))
+                        for sample_id in sample_names:
+                            if sample_id not in abundlist[length][seq]:
+                                otu_table.write("\t0")
+                            else:
+                                otu_table.write("\t%s" % str(abundlist[length][seq][sample_id]))
+                        otu_table.write("\n")
+                    i+=1
+    if otu_table_path:
+        otu_table.close()
+    out_file.close()
+    print("Writing file complete")
+    
 #Process that Multiprocessing
 #Replace this with any workhorse function you want
 
 def process_record(record):
-	return record[1]
+    return record[1]
 
 #From the itertools standard recipes
 def grouper(n, iterable, fillvalue=None):
-	"""grouper(3, 'abcdefg', 'x') -->
-	('a','b','c'), ('d','e','f'), ('g','x','x')"""
-	return izip_longest(*[iter(iterable)]*n, fillvalue=fillvalue)
+    """grouper(3, 'abcdefg', 'x') -->
+    ('a','b','c'), ('d','e','f'), ('g','x','x')"""
+    return izip_longest(*[iter(iterable)]*n, fillvalue=fillvalue)
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser(prog='mesas-dereplication')
     parser.add_argument("-i", metavar="input", help="Input sequence FASTA file", type=str)
     parser.add_argument("-o", metavar="output", help="Output dereplicated FASTA file", type=str)
+    parser.add_argument("-l", help="Sort output FASTA file by sequence length", action='store_true')
+    parser.add_argument("-n", metavar="min_abundance", help="Minimum abundance to be retained in output file", type=int,default=2)
+    parser.add_argument("-t", metavar="otu_table", help="Path to OTU table, if sequences belong in different samples", type=str)
+    parser.add_argument("-N", help='Remove sequences with ambiguous nucleotides', action='store_true')
     args = parser.parse_args()
-    derep(args.i, args.o)
+    derep(args.i, args.o, args.l, args.n, args.t, args.N)
