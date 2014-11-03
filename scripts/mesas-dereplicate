@@ -1,53 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-import multiprocessing
 from collections import Counter
-from zlib import compress, decompress
 from hashlib import md5
-
-nucleotide_map = {"A":"0","T":"1","G":"2","C":"3","N":"4"}
-num_map = {0:"A",1:"T",2:"G",3:"C",4:"N"}
-from string import maketrans
-nucleotides = "ATGCN"
-numbers = "01234"
-nuc2num = maketrans(nucleotides, numbers)
-num2nuc = maketrans(numbers, nucleotides)
-
-def int2base(x, base):
-  if x < 0: sign = -1
-  elif x==0: return '0'
-  else: sign = 1
-  x *= sign
-  digits = []
-  while x:
-    digits.append(numbers[x % base])
-    x /= base
-  if sign < 0:
-    digits.append('-')
-  digits.reverse()
-  return ''.join(digits)
-
-def seq2num(sequence):
-    """Converts nucleotide string to a base-4 representation. Only accepts
-    A,T,G,C,N. No other ambiguous nucleotides.
-    """
-    return int(sequence.translate(nuc2num),5)
-    
-def num2seq(num, seq_length):
-    """Converts [length, base-4 repr] list to a nucleotide string."""
-    #seq_length = seq_info[0]
-    #seq_num = seq_info[1]
-    #seq = ""
-    #for i in range(1,seq_length+1):
-        #seq += num_map[seq_num/4**(seq_length-i)]
-        #seq_num -= (seq_num/4**(seq_length-i))*4**(seq_length-i)
-    base5_str = int2base(num, 5)
-    if len(base5_str) is not seq_length:
-        diff = seq_length - len(base5_str)
-        base5_str = '0'*diff + base5_str
-    
-    return base5_str.translate(num2nuc)
 
 def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_label):
     """ Process a fasta file into a tab-separated file. """
@@ -76,14 +31,13 @@ def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_lab
                         clist[seq_len] = Counter()
                         if otu_table_path:
                             abundlist[seq_len] = dict()
-                    seqnum = seq2num(sequence)
-                    clist[seq_len][seqnum]+=1
+                    clist[seq_len][sequence]+=1
                     if otu_table_path:
                         if seqnum not in abundlist[seq_len]:
-                            abundlist[seq_len][seqnum] = dict()
-                        if sample_id not in abundlist[seq_len][seqnum]:
-                            abundlist[seq_len][seqnum][sample_id] = 0
-                        abundlist[seq_len][seqnum][sample_id] += 1
+                            abundlist[seq_len][sequence] = dict()
+                        if sample_id not in abundlist[seq_len][sequence]:
+                            abundlist[seq_len][sequence][sample_id] = 0
+                        abundlist[seq_len][sequence][sample_id] += 1
                 #Start processing the next sequences
                 if otu_table_path:
                     #Parse out the sample ID
@@ -103,13 +57,12 @@ def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_lab
         otu_table.write("\n")
     for length, counter in iter(sorted(clist.items(),key=lambda x: x[0],reverse=True)):
         for seq, count in iter(sorted(dict(counter).items(),key=lambda x: x[1],reverse=True)):
-            if (count>=n) & (seq is not "") & (seq is not None):
-                    text_seq = num2seq(seq, length)
+            if (count >= n) & (seq is not "") & (seq is not None):
                     if hash_label:
-                        label = md5(text_seq).hexdigest()
+                        label = md5(seq).hexdigest()
                     else:
                         label = str(i)
-                    out_file.write(">%s size=%s;\n%s\n" % (str(i), str(count), text_seq))
+                    out_file.write(">%s size=%s;\n%s\n" % (str(i), str(count), seq))
                     if otu_table_path:
                         otu_table.write(str(i))
                         for sample_id in sample_names:
