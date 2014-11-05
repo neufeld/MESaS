@@ -62,7 +62,7 @@ def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_lab
                         label = md5(seq).hexdigest()
                     else:
                         label = str(i)
-                    out_file.write(">%s size=%s;\n%s\n" % (str(i), str(count), seq))
+                    out_file.write(">%s;size=%s;\n%s\n" % (str(i), str(count), seq))
                     if otu_table_path:
                         otu_table.write(str(i))
                         for sample_id in sample_names:
