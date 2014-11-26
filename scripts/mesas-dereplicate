@@ -59,12 +59,12 @@ def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_lab
         for seq, count in iter(sorted(dict(counter).items(),key=lambda x: x[1],reverse=True)):
             if (count >= n) & (seq is not "") & (seq is not None):
                     if hash_label:
-                        label = md5(seq).hexdigest()
+                        label = str(md5(seq).hexdigest())
                     else:
                         label = str(i)
-                    out_file.write(">%s;size=%s;\n%s\n" % (str(i), str(count), seq))
+                    out_file.write(">%s;size=%s;\n%s\n" % (label, str(count), seq))
                     if otu_table_path:
-                        otu_table.write(str(i))
+                        otu_table.write(label)
                         for sample_id in sample_names:
                             if sample_id not in abundlist[length][seq]:
                                 otu_table.write("\t0")
