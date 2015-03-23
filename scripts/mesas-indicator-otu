@@ -4,11 +4,13 @@ import argparse
 parser = argparse.ArgumentParser(prog='mesas-indicator-otu')
 parser.add_argument("-i", metavar="input", help="Input indicator species file", required=True, type=str)
 parser.add_argument("-t", metavar="table", help="OTU table file (tab format)", required=True, type=str)
+parser.add_argument("-m", metavar="metadata", help="Qiime metadata mapping file", required=True, type=str)
 parser.add_argument("-o", metavar="output", help="Output directory", required=True, type=str)
 args = parser.parse_args()
 
 ind_file = args.i
 otu_file = args.t
+map_file = args.m
 out_dir = args.o
 
 #Store the OTU table into a dict
@@ -17,6 +19,31 @@ with open(otu_file, 'r') as otu_table:
     for line in otu_table:
         split_line = line.split("\t")
         otu_dict[split_line[0]] = split_line[1:]
+
+map_dict = {}
+with open(map_file, 'r') as metadata_map:
+    
+    categories = metadata_map.readline().split("\t")
+    categories = map(str.strip, categories)
+    category_iter = iter(categories)
+    next(category_iter) #Skip first column (SampleID)
+    for metadata_category in category_iter:
+        map_dict[metadata_category] = list() # Make a list of metadata values for each category.
+
+    for line in metadata_map:
+        split_line = line.split("\t")
+        category = 1
+        category_iter = iter(split_line)
+        next(category_iter) #Skip first column as before
+        for metadata in category_iter:
+            if not map_dict[categories[category]].count(metadata) > 0:
+                #Don't include duplicates
+                map_dict[categories[category]].append(metadata)
+            category += 1
+
+    for meta_list in map_dict.itervalues():
+        meta_list.sort()
+
 
 with open(ind_file, 'r') as ind_list:
     with open(out_dir+"/indicator_species.html",'w') as out_report:
@@ -44,6 +71,8 @@ with open(ind_file, 'r') as ind_list:
                         if line_data[0] == "<0":
                             out_ind.write("No indicator species found")
                             break
+                        #Re-name the cluster to be the metadata value instead of just a number
+                        line_data[1] = map_dict[metadata][int(line_data[1]) - 1]
                         otu_line = otu_dict[line_data[0][1:]]
                         out_ind.write("\t".join(line_data).strip() + "\t" + "\t".join(otu_line).strip()+"\n")
                         line = ind_list.readline()
