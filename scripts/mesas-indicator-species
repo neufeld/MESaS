@@ -71,8 +71,7 @@ otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
 
 #Read in mapping
 print("Reading mapping");
-mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t"))
-rownames(mapping) = gsub("^X(?=[0-9])", "", rownames(mapping), perl = TRUE)
+mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t", check.names = FALSE))
 # For non-numeric sample names, comment out the following line
 #colnames(mapping) <- paste("X", colnames(mapping), sep = "");
 numeric_names <- suppressWarnings(sapply(colnames(mapping),as.numeric))
