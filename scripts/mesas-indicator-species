@@ -66,9 +66,9 @@ pkgTest("labdsv")
 #Read in and format otu table
 print("Reading OTU table")
 rawtable <- read.table(otuTableFile, skip = 1, 
-comment.char = "", header = TRUE, row.names = 1, sep = "\t")
+comment.char = "", header = TRUE, row.names = 1, sep = "\t", check.names = FALSE)
 otutable <- t(rawtable[1:(ncol(rawtable) - 1)])
-
+colnames(otutable) <- paste("X",colnames(otutable),sep="")
 #Read in mapping
 print("Reading mapping");
 mapping <- t(read.table(mappingFile, header = TRUE, comment.char = "", row.names = 1, sep = "\t", check.names = FALSE))

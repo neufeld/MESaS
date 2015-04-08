@@ -21,7 +21,7 @@ with open(otu_file, 'r') as otu_table:
         otu_dict[split_line[0]] = split_line[1:]
 
 map_dict = {}
-with open(map_file, 'r') as metadata_map:
+with open(map_file, 'rU') as metadata_map:
     
     categories = metadata_map.readline().split("\t")
     categories = map(str.strip, categories)
