@@ -33,7 +33,7 @@ def derep(in_file, out_file, length_sort, n, otu_table_path, exclude_N, hash_lab
                             abundlist[seq_len] = dict()
                     clist[seq_len][sequence]+=1
                     if otu_table_path:
-                        if seqnum not in abundlist[seq_len]:
+                        if sequence not in abundlist[seq_len]:
                             abundlist[seq_len][sequence] = dict()
                         if sample_id not in abundlist[seq_len][sequence]:
                             abundlist[seq_len][sequence][sample_id] = 0
