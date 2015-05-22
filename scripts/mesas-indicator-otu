@@ -36,6 +36,7 @@ with open(map_file, 'rU') as metadata_map:
         category_iter = iter(split_line)
         next(category_iter) #Skip first column as before
         for metadata in category_iter:
+            metadata = metadata.strip()
             if not map_dict[categories[category]].count(metadata) > 0:
                 #Don't include duplicates
                 map_dict[categories[category]].append(metadata)
